@@ -24,7 +24,17 @@ MYGAME.IMG = {
     ENEMY :  {
         1 : "./img/ninin.png",
         2 : "./img/business_man_macho.png",
-        3 : "./img/car_jiko_aori_unten.png"
+        3 : "./img/car_jiko_aori_unten.png",
+        4 : "./img/character_program_fast.png",
+        5 : "./img/cycling_couple.png",
+        6 : "./img/guruguru_woman.png",
+        7 : "./img/hashiru_syokupan_woman.png",
+        8 : "./img/safe.png",
+        9 : "./img/runman.png",
+        10 : "./img/runwoman.png",
+        11 : "./img/syazai_man.png",
+        12 : "./img/takuhaiin_run_man.png",
+        13 : "./img/woman_macho.png"
     }
 };
 
@@ -48,25 +58,29 @@ MYGAME.PLAYER = {
 //--------------------エネミー定数-----------------------
 MYGAME.ENEMY = {
     WIDTH    :  400,
-    HEIGHT   :  500,
+    HEIGHT   :  400,
     SCALE    : {    
         X : 0.19,
         Y : 0.19
     },
     SPEED : 5, //初期速度
-    MULTIPLY : {}
+    NEXTSPEED : 0.5
 };
 //-------------------------------------------------------
 
-window.onload = function(){
+window.onload = function() {
     var core = new Core(MYGAME.SYSTEM.WIDTH, MYGAME.SYSTEM.HEIGHT);
-       core.preload(
-           MYGAME.IMG.BG,
-           MYGAME.IMG.PLAYER,
-           MYGAME.IMG.ENEMY[1],
-           MYGAME.IMG.ENEMY[2],
-           MYGAME.IMG.ENEMY[3],
+    var amount = Object.keys(MYGAME.IMG.ENEMY).length;//エネミー数をキャッシュ
+    console.log("amount : "+amount);
+    console.log("amount : "+amount);
+
+    core.preload(
+        MYGAME.IMG.BG,
+        MYGAME.IMG.PLAYER
     );
+    for(var i = 1; i <= amount; i++) {
+        core.preload(MYGAME.IMG.ENEMY[i]);
+    }
     core.fps = MYGAME.SYSTEM.FPS;
     core.onload = function() {
         //--------表示---------------------
@@ -89,10 +103,8 @@ window.onload = function(){
         //エネミーの表示
         var enemyCnt = 1;//エネミー数保持
         var enemy = new Sprite(MYGAME.ENEMY.WIDTH, MYGAME.ENEMY.HEIGHT);
-        enemy.image = core.assets[MYGAME.IMG.ENEMY[enemyCnt]];
+        enemy.image = core.assets[MYGAME.IMG.ENEMY[1]];
         initEnemy();
-
-
 
         //プレーヤーの表示
         var backman = new Sprite(MYGAME.PLAYER.WIDTH, MYGAME.PLAYER.HEIGHT);
@@ -102,7 +114,7 @@ window.onload = function(){
         backman.scaleX = MYGAME.PLAYER.SCALE.X;
         backman.scaleY = MYGAME.PLAYER.SCALE.Y;
         
-        //-------衝突判定-----------
+        //-------衝突判定--------------------------------------
         var enemy_W,//現時点での横幅
             enemySpeed = MYGAME.ENEMY.SPEED,//現時点でのスピード
             deadFlag = false;//死亡フラグ
@@ -111,21 +123,18 @@ window.onload = function(){
             //--- 常に動作----
             enemy_W = this.width * this.scaleX;
             this.y += enemySpeed;
-            if(this.scaleX > 1.5) {
-                core.pause();
-                initEnemy();
-            }
             this.scale(1.015, 1.015);
             //MYGAME.debug("scaleX: ", this.scaleX);
             // console.log("enemy_ww : " + (this.x + enemy_W/2));
             // console.log("backman_ww : " + (backman.x + backman.width * backman.scaleX/2));
-            console.log("backman.x" + backman.x);
-            console.log("this.x", this.x);
+            //console.log("backman.x" + backman.x);
+            //console.log("this.x", this.x);
             //MYGAME.debugi("this.enemy_W", enemy_W);
-            console.log("backman.width * backman.scalex" + backman.width * backman.scaleX);
-            console.log(backman.x + " < " + this.x + " + " + enemy_W);
-            console.log(this.x + " < (" + backman.x + " + " + backman.width * backman.scaleX + " ) " );
-
+           // console.log("backman.width * backman.scalex" + backman.width * backman.scaleX);
+            //console.log(backman.x + " < " + this.x + " + " + enemy_W);
+           // console.log(this.x + " < (" + backman.x + " + " + backman.width * backman.scaleX + " ) " );
+            console.log("X : " + this.scaleX);
+            console.log("Y : " + this.scaleY);
             //---ホーミング-----this.scaleX < 0.6 ----
             if (this.scaleX < 0.6) {
                 this.x = backman.x - enemy_W/2;// backman.width * backman.scaleX/2 - enemy_W/2;
@@ -134,14 +143,25 @@ window.onload = function(){
             if (0.7 < this.scaleX && this.scaleX < 1.0 ){
                 if(backman.x < (this.x + enemy_W)        //左端
                     && (this.x < (backman.x + backman.width * backman.scaleX)) //右端
-                ) { 
-                    deadFlag = true; //死亡フラグ　オン
+                ) {
                     label.text = 'DEAD!';
-                    dead();
+                    dead();//死亡
                 } else {
                     label.text = 'still alive';
                 }
             }
+            //----無事に通過時-------------- 
+            if(deadFlag === false && this.scaleX > 1.2) {
+                //core.pause();
+                
+                enemyPassed();
+                initEnemy();
+            }
+            //----ゲームオーバーしたあと-------------
+            if(deadFlag === true){
+                
+            }
+
         });
 
         //----ドラッグイベント----
@@ -158,14 +178,17 @@ window.onload = function(){
                 console.log("move");
             });
         }
-
-        //----エネミー通過時----
+        
+        //----エネミー通過時----x
         function enemyPassed(){
+            if (enemyCnt > amount) {
+                
+            } else {
             //画像変更
-            enemy.image = core.assets[++enemyCnt];
+                enemy.image = core.assets[MYGAME.IMG.ENEMY[++enemyCnt]];
+            }
             //スピード変更
-            var speed = MYGAME.ENEMY.SPEED * enemyCnt;
-            return speed;
+            enemySpeed +=  MYGAME.ENEMY.NEXTSPEED;
         };
 
         //----エネミー初期化----
@@ -180,6 +203,7 @@ window.onload = function(){
         //----死亡時----
         function dead(){
             backman.onenterframe = function() {
+                deadFlag = true; //死亡フラグ　オン
                 this.rotate(300);
                 this.x += 30;
                 this.y -= 30;
@@ -187,7 +211,12 @@ window.onload = function(){
             };
         };
 
-        
+        //----クリア時----
+        function success(){
+            game.pause();
+            label.text = "おめでとう！このちょうしで頑張ろう";
+    }
+
         core.rootScene.addChild(enemy);
         core.rootScene.addChild(backman);
         core.rootScene.addChild(this);
