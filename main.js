@@ -21,6 +21,7 @@ MYGAME.namespace = function(ns_string){ //namespace
 MYGAME.IMG = {
     BG        : "./img/haikei4.png",
     PLAYER    : "./img/stand2_back07_ojisan.png",
+    RESTART   : "./img/restart_button.png",
     ENEMY :  {
         1 : "./img/ninin.png",
         2 : "./img/business_man_macho.png",
@@ -42,9 +43,19 @@ MYGAME.IMG = {
 MYGAME.SYSTEM = {
     WIDTH       : 750,   // 画面横サイズ
     HEIGHT      : 950,   // 画面縦サイズ
-    FPS         : 50,     // フレームレート
+    FPS         : 40,     // フレームレート
     DEBUG       : true,
-    HOMING_END  : {}
+    POINT : {
+        HOMING : {
+            START :1/10,
+            END : 5/10//ホーミング終了ポイント
+        },
+        JUDGE : {
+            START : 6.5/10,
+            END   : 7/10
+        },
+        PASSED   : 9/10 //通過判定ポイント
+    }
 };
 //--------------------プレーヤー定数--------------------
 MYGAME.PLAYER = {
@@ -53,36 +64,54 @@ MYGAME.PLAYER = {
     SCALE    : {
         X :    2.0,        //プレーヤー横大きさ最終調整
         Y :    2.0  //プレーヤー縦大きさ最終調整
+    },
+    NEXT : {
+        SCALE : 0.94,
+        ROTATE : 300,
+        X     : 30,
+        Y     : 30
     }
 };
 //--------------------エネミー定数-----------------------
 MYGAME.ENEMY = {
-    WIDTH    :  400,
-    HEIGHT   :  400,
+    WIDTH    :  90,
+    HEIGHT   :  200,
     SCALE    : {    
-        X : 0.19,
-        Y : 0.19
+        X : 0.15,
+        Y : 0.15
     },
-    SPEED : 5, //初期速度
-    NEXTSPEED : 0.5
+    SPEED : 10, //初期速度
+    NEXT : {
+        SPEED : 2,
+        SCALE :1.01
+    }
+   
 };
 //-------------------------------------------------------
-
+function createGameScene() {
+    var scene = new Scene();
+    return scene;
+}
 window.onload = function() {
     var core = new Core(MYGAME.SYSTEM.WIDTH, MYGAME.SYSTEM.HEIGHT);
+    var scale_h = window.innerHeight/MYGAME.SYSTEM.HEIGHT;
+    　　　var scale_w = window.innerWidth/MYGAME.SYSTEM.WIDTH;
+    　　　if (scale_h >= scale_w) {
+        　　　　　core.scale = scale_w;
+        　　　} else {
+        　　　　　core.scale = scale_h;
+        　　　}
     var amount = Object.keys(MYGAME.IMG.ENEMY).length;//エネミー数をキャッシュ
-    console.log("amount : "+amount);
-    console.log("amount : "+amount);
-
     core.preload(
         MYGAME.IMG.BG,
-        MYGAME.IMG.PLAYER
+        MYGAME.IMG.PLAYER,
+        MYGAME.IMG.RESTART
     );
     for(var i = 1; i <= amount; i++) {
         core.preload(MYGAME.IMG.ENEMY[i]);
     }
     core.fps = MYGAME.SYSTEM.FPS;
-    core.onload = function() {
+    core.onload = function() { 
         //--------表示---------------------
         //背景の表示
         var bgimg = new Sprite(MYGAME.SYSTEM.WIDTH, MYGAME.SYSTEM.HEIGHT);
@@ -99,11 +128,16 @@ window.onload = function() {
         label.font = '40px "Arial"';
         label.text = '';
         core.rootScene.addChild(label);
-
+        //リスタートボタン
+        var restart = new Sprite(231,43);
+        restart.image = core.assets[MYGAME.IMG.RESTART];
+        restart.x = 0;// MYGAME.SYSTEM.WIDTH/;
+        restart.y = MYGAME.SYSTEM.HEIGHT* 9/10;
         //エネミーの表示
         var enemyCnt = 1;//エネミー数保持
         var enemy = new Sprite(MYGAME.ENEMY.WIDTH, MYGAME.ENEMY.HEIGHT);
         enemy.image = core.assets[MYGAME.IMG.ENEMY[1]];
+        //enemy.scale(5, 5);
         initEnemy();
 
         //プレーヤーの表示
@@ -115,32 +149,37 @@ window.onload = function() {
         backman.scaleY = MYGAME.PLAYER.SCALE.Y;
         
         //-------衝突判定--------------------------------------
-        var enemy_W,//現時点での横幅
-            enemySpeed = MYGAME.ENEMY.SPEED,//現時点でのスピード
-            deadFlag = false;//死亡フラグ
 
+        var enemy_W,//現時点での横幅
+            enemy_HP,//現時点での縦座標
+            addScale         = 1,//scale保持
+            enemySpeed    = MYGAME.ENEMY.SPEED,//現時点でのスピード,
+            homingEND_AP  = MYGAME.SYSTEM.HEIGHT * MYGAME.SYSTEM.POINT.HOMING.END,
+            judgeSTART_AP = MYGAME.SYSTEM.HEIGHT * MYGAME.SYSTEM.POINT.JUDGE.START,
+            judgeEND_AP   = MYGAME.SYSTEM.HEIGHT * MYGAME.SYSTEM.POINT.JUDGE.END,
+            passed_AP     = MYGAME.SYSTEM.HEIGHT * MYGAME.SYSTEM.POINT.PASSED,
+            deadFlag      = false;  //死亡フラグ
+
+        //-------フレームごとに実行-----------------------
         enemy.on('enterframe', function (){
+            
             //--- 常に動作----
-            enemy_W = this.width * this.scaleX;
-            this.y += enemySpeed;
-            this.scale(1.015, 1.015);
-            //MYGAME.debug("scaleX: ", this.scaleX);
-            // console.log("enemy_ww : " + (this.x + enemy_W/2));
-            // console.log("backman_ww : " + (backman.x + backman.width * backman.scaleX/2));
-            //console.log("backman.x" + backman.x);
-            //console.log("this.x", this.x);
-            //MYGAME.debugi("this.enemy_W", enemy_W);
-           // console.log("backman.width * backman.scalex" + backman.width * backman.scaleX);
-            //console.log(backman.x + " < " + this.x + " + " + enemy_W);
-           // console.log(this.x + " < (" + backman.x + " + " + backman.width * backman.scaleX + " ) " );
-            console.log("X : " + this.scaleX);
-            console.log("Y : " + this.scaleY);
-            //---ホーミング-----this.scaleX < 0.6 ----
-            if (this.scaleX < 0.6) {
-                this.x = backman.x - enemy_W/2;// backman.width * backman.scaleX/2 - enemy_W/2;
+            enemy_W   = this.width * this.scaleX;
+            enemy_HP  = this.y + this.height * this.scaleY/2;
+            scale     = MYGAME.ENEMY.NEXT.SCALE + enemyCnt/300;
+            addScale *= scale;
+            this.y   += enemySpeed;
+            console.log(backman.y);
+            this.scale(scale, scale);
+
+            //---ホーミング-----------------------
+            if (enemy_HP < homingEND_AP) {
+                this.x = backman.x - enemy_W/2 + backman.width * backman.scaleX/2;
+                // - enemy_W/2;
             }
-            //---0.7 < this.scaleX かつ this.scale < 0.8 ----
-            if (0.7 < this.scaleX && this.scaleX < 1.0 ){
+
+            //----判定----------------------------
+            if (judgeSTART_AP < enemy_HP && enemy_HP < judgeEND_AP ){
                 if(backman.x < (this.x + enemy_W)        //左端
                     && (this.x < (backman.x + backman.width * backman.scaleX)) //右端
                 ) {
@@ -150,51 +189,51 @@ window.onload = function() {
                     label.text = 'still alive';
                 }
             }
+
             //----無事に通過時-------------- 
-            if(deadFlag === false && this.scaleX > 1.2) {
+            if(deadFlag === false && passed_AP < enemy_HP) {
                 //core.pause();
-                
                 enemyPassed();
                 initEnemy();
             }
-            //----ゲームオーバーしたあと-------------
-            if(deadFlag === true){
-                
-            }
+            
+            //----ドラッグイベント----
+            var originX; // 位置保持変数
+            if (!deadFlag) {
+                backman.addEventListener(enchant.Event.TOUCH_START, function(e){
+                    originX = e.x - this.x;
+                });
+                backman.addEventListener(enchant.Event.TOUCH_MOVE, function(e){
+                    this.x = e.x - originX;
+                });
+            }    
+
+            restart.addEventListener(Event.TOUCH_START, function(e) {
+                //core.reload();
+                restartOn();
+            });
 
         });
 
-        //----ドラッグイベント----
-        var originX; // 位置保持変数
-        if (deadFlag === false ) {
-            backman.addEventListener(enchant.Event.TOUCH_START, function(e){
-                originX = e.x - this.x;
-                //originY = e.y - this.y;
-                console.log("start");
-            });
-            backman.addEventListener(enchant.Event.TOUCH_MOVE, function(e){
-                this.x = e.x - originX;
-                //this.y = e.y - originY;
-                console.log("move");
-            });
-        }
-        
         //----エネミー通過時----x
         function enemyPassed(){
             if (enemyCnt > amount) {
-                
+                success();
             } else {
             //画像変更
                 enemy.image = core.assets[MYGAME.IMG.ENEMY[++enemyCnt]];
             }
             //スピード変更
-            enemySpeed +=  MYGAME.ENEMY.NEXTSPEED;
+                enemySpeed +=  MYGAME.ENEMY.NEXT.SPEED;
         };
 
         //----エネミー初期化----
-        function initEnemy(){
+        function initEnemy() {
             //大きさを初期値へ
-            enemy.scale(MYGAME.ENEMY.SCALE.X, MYGAME.ENEMY.SCALE.Y);
+            if (enemyCnt > 1) {
+                enemy.scale(1/addScale, 1/addScale);//かけてる
+                addScale = 1;
+            }
             //位置を初期値へ
             enemy.x = (MYGAME.SYSTEM.WIDTH/2) - (MYGAME.ENEMY.WIDTH/2);    
             enemy.y = (MYGAME.SYSTEM.HEIGHT * 2/10) - (MYGAME.ENEMY.HEIGHT/2);
@@ -204,22 +243,29 @@ window.onload = function() {
         function dead(){
             backman.onenterframe = function() {
                 deadFlag = true; //死亡フラグ　オン
-                this.rotate(300);
-                this.x += 30;
-                this.y -= 30;
-                this.scale(0.94, 0.94);
+                this.rotate(MYGAME.PLAYER.NEXT.ROTATE);
+                this.x += MYGAME.PLAYER.NEXT.X;
+                this.y -= MYGAME.PLAYER.NEXT.Y;
+                this.scale(MYGAME.PLAYER.NEXT.SCALE, MYGAME.PLAYER.NEXT.SCALE);
+                if(this.y < -1000){core.pause();}
             };
         };
 
         //----クリア時----
-        function success(){
-            game.pause();
+        function success() {
             label.text = "おめでとう！このちょうしで頑張ろう";
-    }
+            core.pause();
+        }
+
+        function restartOn() {
+            c.replaceScene(createCoreScene());
+            c.start();
+            core.reload();
+        }
 
         core.rootScene.addChild(enemy);
         core.rootScene.addChild(backman);
-        core.rootScene.addChild(this);
+        //core.rootScene.addChild(restart);
        // insertBefore(backman, enemy);
     };
     core.start();

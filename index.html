@@ -3,6 +3,39 @@
     <head>
         <title>kuma</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="./manifest.json">
+    <script>
+    // service workerが有効なら、service-worker.js を登録します
+    if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('./service-worker.js');
+              navigator.serviceWorker.ready
+               .then(function (registration) {
+                return registration.pushManager.subscribe({ userVisibleOnly: true });
+            })
+               .then(function (subscription) {
+                console.log('GCM EndPoint is:' + subscription.endpoint);
+                var auth = subscription.getKey('auth') ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))) : '';
+                console.log('User Auth is:' + auth);
+                var publicKey = subscription.getKey('p256dh') ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))) : '';
+                console.log('User PublicKey is:' + publicKey);
+            })
+              .catch(console.error.bind(console));
+                 }
+    </script>
+<script src="https://www.gstatic.com/firebasejs/4.13.0/firebase.js"></script>
+<script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyD9GdXuzB0l49CIIylkfLWa3Daqv1p2D8k",
+    authDomain: "rojokabaddi.firebaseapp.com",
+    databaseURL: "https://rojokabaddi.firebaseio.com",
+    projectId: "rojokabaddi",
+    storageBucket: "rojokabaddi.appspot.com",
+    messagingSenderId: "1078692081429"
+  };
+  firebase.initializeApp(config);
+</script>
+    <meta charset="UTF-8">
     </head>
     <body>
         <!--<div id="enchant-stage"></div> -->
